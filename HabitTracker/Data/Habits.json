@@ -1,0 +1,10 @@
+﻿[
+  {
+    "Name": "Читать книги",
+    "StartDate": "2024-04-01T00:00:00",
+    "Description": "Читать 30 минут в день",
+    "HasReminder": true,
+    "ReminderTimes": [ "08:00", "20:00" ],
+    "CompletedDates": []
+  }
+]
