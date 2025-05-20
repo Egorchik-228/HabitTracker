@@ -7,7 +7,10 @@
         Background="#DFFFD6">
 
     <Window.Resources>
+
         <local:IndexToNumberConverter x:Key="IndexToNumberConverter"/>
+
+        <!-- Стиль для кнопок с анимацией при наведении -->
         <Style x:Key="StyledButton" TargetType="Button">
             <Setter Property="FontSize" Value="16"/>
             <Setter Property="Foreground" Value="White"/>
@@ -16,6 +19,12 @@
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Padding" Value="10,4"/>
             <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+            <Setter Property="RenderTransform">
+                <Setter.Value>
+                    <ScaleTransform ScaleX="1" ScaleY="1"/>
+                </Setter.Value>
+            </Setter>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -25,20 +34,42 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Trigger.EnterActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleX)"
+                                                 To="1.1" Duration="0:0:0.15"/>
+                                <DoubleAnimation Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleY)"
+                                                 To="1.1" Duration="0:0:0.15"/>
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </Trigger.EnterActions>
+                    <Trigger.ExitActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleX)"
+                                                 To="1" Duration="0:0:0.15"/>
+                                <DoubleAnimation Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleY)"
+                                                 To="1" Duration="0:0:0.15"/>
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </Trigger.ExitActions>
+                </Trigger>
+            </Style.Triggers>
         </Style>
     </Window.Resources>
 
-    <!-- Основная сетка без внутренних отступов -->
+    <!-- Основная сетка -->
     <Grid Margin="0">
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <Grid Margin="20">
-                <!-- Внутренние отступы применяем здесь -->
                 <Grid.RowDefinitions>
                     <RowDefinition/>
                 </Grid.RowDefinitions>
 
                 <StackPanel>
-
                     <!-- Заголовок окна -->
                     <TextBlock Text="Добавление Привычки" FontSize="28" FontWeight="Bold"
                                Margin="0,0,0,20" HorizontalAlignment="Center"/>
@@ -60,11 +91,15 @@
                     <StackPanel Name="ReminderSettingsPanel" Margin="0,10,0,0">
                         <TextBlock Text="Время напоминаний:" FontSize="16" FontWeight="SemiBold"/>
 
-                        <!-- Кнопка добавления напоминания -->
-                        <Button Content="➕ Добавить напоминание" Click="AddReminder_Click"
-                                Width="220" Background="#4CAF50" Style="{StaticResource StyledButton}"/>
+                        <!-- Поле для ввода нового времени и кнопка добавления -->
+                        <StackPanel Orientation="Horizontal" Margin="0,5,0,10">
+                            <TextBox Name="NewReminderTimeTextBox" Width="80" Margin="0,0,10,0" 
+                                     FontSize="16" Padding="4" Text=""/>
+                            <Button Content="➕ Добавить напоминание" Click="AddReminder_Click"
+                                    Width="220" Background="#4CAF50" Style="{StaticResource StyledButton}"/>
+                        </StackPanel>
 
-                        <!-- Прокручиваемый список напоминаний -->
+                        <!-- Список существующих напоминаний -->
                         <ScrollViewer Height="150"
                                       VerticalScrollBarVisibility="Auto"
                                       HorizontalScrollBarVisibility="Disabled"
@@ -75,14 +110,19 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                                            <!-- Номер напоминания -->
                                             <TextBlock Text="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=ContentPresenter}, 
                                                                     Path=(ItemsControl.AlternationIndex), 
                                                                     Converter={StaticResource IndexToNumberConverter}}" 
                                                        VerticalAlignment="Center" FontWeight="Bold" FontSize="16" Width="90"/>
                                             <TextBlock Text=": " VerticalAlignment="Center" FontSize="16"/>
+
+                                            <!-- Поле для редактирования времени -->
                                             <TextBox Width="80"
                                                      Text="{Binding Path=., Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                      FontSize="16" Padding="4"/>
+
+                                            <!-- Кнопка удаления напоминания -->
                                             <Button Content="🗑" Click="RemoveReminder_Click" Tag="{Binding}"
                                                     Width="40" Height="30" Background="#D32F2F"
                                                     Style="{StaticResource StyledButton}" FontSize="16"/>

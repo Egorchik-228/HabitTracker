@@ -5,6 +5,58 @@
         Title="Аналитика Привычек" MinHeight="500" MinWidth="800" Background="#DFFFD6" WindowStartupLocation="CenterScreen"
         ResizeMode="CanResizeWithGrip">
 
+    <Window.Resources>
+        <!-- Стиль для кнопок с анимацией при наведении -->
+        <Style x:Key="AnalyticsButtonStyle" TargetType="Button">
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Height" Value="45"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="Margin" Value="0,10,0,0"/>
+            <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+            <Setter Property="RenderTransform">
+                <Setter.Value>
+                    <ScaleTransform ScaleX="1" ScaleY="1"/>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="15">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Trigger.EnterActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleX)"
+                                                 To="1.05" Duration="0:0:0.15"/>
+                                <DoubleAnimation Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleY)"
+                                                 To="1.05" Duration="0:0:0.15"/>
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </Trigger.EnterActions>
+                    <Trigger.ExitActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleX)"
+                                                 To="1" Duration="0:0:0.15"/>
+                                <DoubleAnimation Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleY)"
+                                                 To="1" Duration="0:0:0.15"/>
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </Trigger.ExitActions>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
     <Grid Margin="10">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto"/>
@@ -32,12 +84,19 @@
 
                     <TextBlock Text="Прогресс выполнения:" FontSize="16" FontWeight="Bold"/>
                     <TextBlock Name="CompletionPercentageText" FontSize="16" Margin="0,3,0,10" Foreground="Green"/>
+
+                    <TextBlock Text="Общий прогресс:" FontSize="16" FontWeight="Bold"/>
+                    <TextBlock Name="TotalCompletionText" FontSize="16" Margin="0,3,0,10" Foreground="Green"/>
+
+                    <TextBlock Text="История выполнения:" FontSize="16" FontWeight="Bold"/>
+                    <ScrollViewer Height="150" VerticalScrollBarVisibility="Auto" Margin="0,3,0,10">
+                        <TextBlock Name="CompletionHistoryText" FontSize="14" Foreground="Black" TextWrapping="Wrap"/>
+                    </ScrollViewer>
                 </StackPanel>
 
-                <Button Content="Назад" Height="45" Click="CloseAnalytics_Click"
-                        Background="#1976D2" Foreground="White" FontSize="16"
-                        BorderThickness="0" Cursor="Hand" HorizontalAlignment="Stretch"
-                        Margin="0,10,0,0"/>
+                <Button Content="Назад" Click="CloseAnalytics_Click"
+                        Style="{StaticResource AnalyticsButtonStyle}"
+                        Background="#1976D2"/>
             </StackPanel>
         </Border>
 

@@ -4,7 +4,6 @@ using OxyPlot;
 using OxyPlot.Axes;
 using OxyPlot.Series;
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Windows;
@@ -14,132 +13,121 @@ namespace HabitTracker.Views
 {
     public partial class AnalyticsView : Window, INotifyPropertyChanged
     {
-        private List<Habit> _habits;
+        private readonly HabitService _habitService;
         private PlotModel _plotModel;
 
         public PlotModel PlotModel
         {
-            get { return _plotModel; }
+            get => _plotModel;
             set { _plotModel = value; OnPropertyChanged(nameof(PlotModel)); }
         }
 
         public AnalyticsView()
         {
             InitializeComponent();
+            _habitService = new HabitService();
+            DataContext = this;
+            PlotModel = new PlotModel { Title = "Прогресс выполнения" };
             LoadHabits();
-            DataContext = this; // Устанавливаем DataContext для привязки к PlotModel
-            PlotModel = new PlotModel { Title = "Прогресс выполнения" }; // Инициализация модели графика
         }
 
         private void LoadHabits()
         {
-            HabitService habitService = new HabitService();
-            _habits = habitService.LoadHabit();
-
-            HabitComboBox.ItemsSource = _habits;
+            var habits = _habitService.LoadHabits();
+            HabitComboBox.ItemsSource = habits;
             HabitComboBox.DisplayMemberPath = "Name";
         }
 
-        private void HabitComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e) //Информация о привычке
+        private void HabitComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (HabitComboBox.SelectedItem is Habit selectedHabit)
             {
-                StartDateText.Text = selectedHabit.StartDate.ToString("dd.MM.yyyy");
-                DescriptionText.Text = string.IsNullOrWhiteSpace(selectedHabit.Description) ? "Нет описания" : selectedHabit.Description;
-
-                // Обновление информации о напоминаниях
-                if (selectedHabit.ReminderTimes.Any())
-                {
-                    string reminders = string.Join("\n", selectedHabit.ReminderTimes);
-                    ReminderText.Text = reminders;
-                }
-                else
-                {
-                    ReminderText.Text = "Нет напоминаний";
-                }
-
-                // Вычисление прогресса выполнения привычки
-                int totalDays = (DateTime.Today - selectedHabit.StartDate).Days + 1;
-                int completedDays = selectedHabit.CompletedDays;
-                double completionRate = totalDays > 0 ? (completedDays / (double)totalDays) * 100 : 0;
-
-                CompletionPercentageText.Text = $"Выполнено: {completionRate:F1}% ({completedDays} из {totalDays} дней)";
-
-                // Обновление графика
+                UpdateUI(selectedHabit);
                 UpdateChart(selectedHabit);
             }
             else
             {
-                StartDateText.Text = "";
-                DescriptionText.Text = "";
-                CompletionPercentageText.Text = "";
-                ReminderText.Text = "";
-                PlotModel = new PlotModel { Title = "Прогресс выполнения" }; // Очистка графика
+                ClearUI();
             }
         }
 
-        private void UpdateChart(Habit habit) //График
+        private void UpdateUI(Habit habit)
         {
-            if (habit != null)
-            {
-                PlotModel = new PlotModel { Title = habit.Name }; // Заголовок графика - имя привычки
-                PlotModel.Axes.Clear();
-                PlotModel.Series.Clear();
+            StartDateText.Text = habit.StartDate.ToString("dd.MM.yyyy");
+            DescriptionText.Text = string.IsNullOrWhiteSpace(habit.Description) ? "Нет описания" : habit.Description;
+            ReminderText.Text = habit.ReminderTimes.Any() ? string.Join("\n", habit.ReminderTimes) : "Нет напоминаний";
 
-                // Ось X - Даты
-                PlotModel.Axes.Add(new DateTimeAxis
-                {
-                    Title = "Дата",
-                    StringFormat = "dd.MM",
-                    Minimum = DateTimeAxis.ToDouble(habit.StartDate.Date),
-                    Maximum = DateTimeAxis.ToDouble(DateTime.Today.Date)
-                });
+            int todayCompletions = habit.TodayCompletions;
+            int dailyTarget = habit.DailyTarget;
+            double todayCompletionRate = dailyTarget > 0 ? (todayCompletions / (double)dailyTarget) * 100 : 0;
+            CompletionPercentageText.Text = $"Выполнено сегодня: {todayCompletions}/{dailyTarget} ({todayCompletionRate:F1}%)";
 
-                // Ось Y - Выполнено (0 или 1)
-                PlotModel.Axes.Add(new LinearAxis
-                {
-                    Title = "Выполнено",
-                    Minimum = -0.1, // Небольшой запас снизу
-                    Maximum = 1.1,  // Небольшой запас сверху
-                    MajorStep = 1,
-                    MinorStep = 1,
-                    TickStyle = TickStyle.None // Скрываем риски на оси Y
-                });
+            int totalCompletions = habit.TotalCompletions;
+            int totalDays = (DateTime.Today - habit.StartDate.Date).Days + 1;
+            int totalTarget = totalDays * dailyTarget;
+            double totalCompletionRate = totalTarget > 0 ? (totalCompletions / (double)totalTarget) * 100 : 0;
+            TotalCompletionText.Text = $"Выполнено всего: {totalCompletions}/{totalTarget} ({totalCompletionRate:F1}%)";
 
-                // Серия - Линейный график выполнения
-                var lineSeries = new LineSeries
-                {
-                    Title = "Выполнение",
-                    StrokeThickness = 2,
-                    MarkerSize = 3,
-                    MarkerType = MarkerType.Circle
-                };
-
-                for (int i = 0; i <= (DateTime.Today - habit.StartDate).Days; i++)
-                {
-                    DateTime currentDate = habit.StartDate.AddDays(i).Date;
-                    double yValue = habit.CompletedDates.Contains(currentDate) ? 1 : 0;
-                    lineSeries.Points.Add(new DataPoint(DateTimeAxis.ToDouble(currentDate), yValue));
-                }
-
-                PlotModel.Series.Add(lineSeries);
-
-                // Обновление модели графика
-                PlotModel.InvalidatePlot(true);
-            }
-            else
-            {
-                PlotModel = new PlotModel { Title = "Прогресс выполнения" };
-            }
+            CompletionHistoryText.Text = habit.CompletionHistory;
         }
 
-        private void CloseAnalytics_Click(object sender, RoutedEventArgs e)
+        private void ClearUI()
         {
-            Close();
+            StartDateText.Text = "";
+            DescriptionText.Text = "";
+            ReminderText.Text = "";
+            CompletionPercentageText.Text = "";
+            TotalCompletionText.Text = "";
+            CompletionHistoryText.Text = "";
+            PlotModel = new PlotModel { Title = "Прогресс выполнения" };
         }
+
+        private void UpdateChart(Habit habit)
+        {
+            PlotModel = new PlotModel { Title = habit.Name };
+
+            PlotModel.Axes.Add(new DateTimeAxis
+            {
+                Title = "Дата",
+                StringFormat = "dd.MM",
+                Minimum = DateTimeAxis.ToDouble(habit.StartDate.Date),
+                Maximum = DateTimeAxis.ToDouble(DateTime.Today.Date)
+            });
+
+            PlotModel.Axes.Add(new LinearAxis
+            {
+                Title = "Выполнено раз",
+                Minimum = -0.5,
+                Maximum = habit.DailyTarget + 0.5,
+                MajorStep = 1,
+                MinorStep = 1
+            });
+
+            var lineSeries = new LineSeries
+            {
+                Title = "Выполнение",
+                StrokeThickness = 2,
+                MarkerSize = 3,
+                MarkerType = MarkerType.Circle
+            };
+
+            var groupedCompletions = habit.CompletedDates
+                .GroupBy(d => d.Date)
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            for (DateTime date = habit.StartDate.Date; date <= DateTime.Today; date = date.AddDays(1))
+            {
+                int completions = groupedCompletions.TryGetValue(date, out int count) ? count : 0;
+                lineSeries.Points.Add(new DataPoint(DateTimeAxis.ToDouble(date), completions));
+            }
+
+            PlotModel.Series.Add(lineSeries);
+            PlotModel.InvalidatePlot(true);
+        }
+
+        private void CloseAnalytics_Click(object sender, RoutedEventArgs e) => Close();
 
         public event PropertyChangedEventHandler PropertyChanged;
-
         protected virtual void OnPropertyChanged(string propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));

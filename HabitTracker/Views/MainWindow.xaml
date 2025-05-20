@@ -1,8 +1,65 @@
 ﻿<Window x:Class="HabitTracker.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:HabitTracker"
+        xmlns:converters="clr-namespace:HabitTracker.Converters"
         Title="Трекер Привычек" Height="500" Width="800" WindowState="Maximized"
         Background="#DFFFD6">
+
+    <Window.Resources>
+        <converters:CompletionsToEnabledConverter x:Key="CompletionsToEnabledConverter"/>
+        <!-- Стиль для кнопок с анимацией при наведении -->
+        <Style x:Key="MainWindowButtonStyle" TargetType="Button">
+            <Setter Property="FontSize" Value="18"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Height" Value="50"/>
+            <Setter Property="Margin" Value="10"/>
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+            <Setter Property="RenderTransform">
+                <Setter.Value>
+                    <ScaleTransform ScaleX="1" ScaleY="1"/>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="15" Padding="5">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Trigger.EnterActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleX)"
+                                                 To="1.1" Duration="0:0:0.15"/>
+                                <DoubleAnimation Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleY)"
+                                                 To="1.1" Duration="0:0:0.15"/>
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </Trigger.EnterActions>
+                    <Trigger.ExitActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleX)"
+                                                 To="1" Duration="0:0:0.15"/>
+                                <DoubleAnimation Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleY)"
+                                                 To="1" Duration="0:0:0.15"/>
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </Trigger.ExitActions>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+    
+    
 
     <Grid Margin="10">
         <Grid.RowDefinitions>
@@ -21,7 +78,6 @@
                       BorderBrush="Gray" BorderThickness="1"
                       HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                       FontSize="18" Margin="0,0,5,0">
-                <!-- Добавлен небольшой отступ справа -->
                 <ListView.View>
                     <GridView>
                         <GridViewColumn Header="Название" DisplayMemberBinding="{Binding Name}" Width="200"/>
@@ -33,9 +89,7 @@
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
                         <GridViewColumn Header="Описание" DisplayMemberBinding="{Binding Description}" Width="250"/>
-                        <GridViewColumn Header="Прогресс" DisplayMemberBinding="{Binding CompletedDays}" Width="100"/>
-
-                        <!-- Отображение списка напоминаний -->
+                        <GridViewColumn Header="Прогресс (сегодня)" DisplayMemberBinding="{Binding ProgressDisplay}" Width="150"/>
                         <GridViewColumn Header="Напоминания" Width="200">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
@@ -54,80 +108,111 @@
             </ListView>
         </ScrollViewer>
 
-        <!-- Кнопки управления -->
+        <!-- Кнопки управления с иконками -->
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Stretch" Margin="0,10,0,0">
 
             <!-- Кнопка "Добавить" -->
-            <Button Content="Добавить" Height="50" Click="AddHabit_Click"
-                    Background="#4CAF50" Foreground="White" FontSize="18"
-                    Margin="10" Padding="5" BorderThickness="0" Cursor="Hand"
-                    HorizontalAlignment="Stretch">
-                <Button.Template>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" CornerRadius="15" Padding="5">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                    </ControlTemplate>
-                </Button.Template>
+            <Button Click="AddHabit_Click"
+                    Background="#4CAF50" Style="{StaticResource MainWindowButtonStyle}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="➕" FontSize="20" Margin="0,0,5,0"/>
+                    <TextBlock Text="Добавить"/>
+                </StackPanel>
             </Button>
 
             <!-- Кнопка "Редактировать" -->
-            <Button Content="Редактировать" Height="50" Click="EditHabit_Click"
-                    Background="#FFB300" Foreground="White" FontSize="18"
-                    Margin="10" Padding="5" BorderThickness="0" Cursor="Hand"
-                    HorizontalAlignment="Stretch">
-                <Button.Template>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" CornerRadius="15" Padding="5">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                    </ControlTemplate>
-                </Button.Template>
+            <Button Click="EditHabit_Click"
+                    Background="#FFB300" Style="{StaticResource MainWindowButtonStyle}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="✏️" FontSize="20" Margin="0,0,5,0"/>
+                    <TextBlock Text="Редактировать"/>
+                </StackPanel>
             </Button>
 
             <!-- Кнопка "Удалить" -->
-            <Button Content="Удалить" Height="50" Click="DeleteHabit_Click"
-                    Background="#D32F2F" Foreground="White" FontSize="18"
-                    Margin="10" Padding="5" BorderThickness="0" Cursor="Hand"
-                    HorizontalAlignment="Stretch">
-                <Button.Template>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" CornerRadius="15" Padding="5">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                    </ControlTemplate>
-                </Button.Template>
+            <Button Click="DeleteHabit_Click"
+                    Background="#D32F2F" Style="{StaticResource MainWindowButtonStyle}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="🗑️" FontSize="20" Margin="0,0,5,0"/>
+                    <TextBlock Text="Удалить"/>
+                </StackPanel>
             </Button>
 
             <!-- Кнопка "Отметить выполнение" -->
-            <Button Content="Отметить выполнение" Height="50" Click="MarkHabitCompleted_Click"
-                    Background="#388E3C" Foreground="White" FontSize="18"
-                    BorderThickness="0" Cursor="Hand"
-                    HorizontalAlignment="Stretch"
-                    Margin="10">
-                <Button.Template>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" CornerRadius="15" Padding="5">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                    </ControlTemplate>
-                </Button.Template>
+            <Button Click="MarkHabitCompleted_Click"
+        Background="#388E3C" 
+        Style="{StaticResource MainWindowButtonStyle}"
+        ToolTip="Отметить выполнение привычки"
+        IsEnabled="{Binding SelectedItem.CanMarkCompleted, ElementName=HabitListView}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="✅" FontSize="20" Margin="0,0,5,0"/>
+                    <TextBlock Text="Отметить выполнение"/>
+                </StackPanel>
             </Button>
 
             <!-- Кнопка "Аналитика" -->
-            <Button Content="Аналитика" Width="200" Height="50"
-                    Click="OpenAnalytics_Click"
-                    Background="#1976D2" Foreground="White" FontSize="18"
-                    BorderThickness="0" Cursor="Hand"
-                    Margin="10">
-                <Button.Template>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" CornerRadius="15" Padding="5">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                    </ControlTemplate>
-                </Button.Template>
+            <Button Width="200" Click="OpenAnalytics_Click"
+                    Background="#1976D2" Style="{StaticResource MainWindowButtonStyle}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="📊" FontSize="20" Margin="0,0,5,0"/>
+                    <TextBlock Text="Аналитика"/>
+                </StackPanel>
             </Button>
         </StackPanel>
+
+        <!-- Кнопка закрытия программы -->
+        <Button Width="60" Height="60"
+                HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                Click="CloseApp_Click" 
+                Background="#FF5252" Foreground="White" FontSize="30" Cursor="Hand"
+                Margin="0,0,30,30"
+                Panel.ZIndex="10">
+            <Button.Template>
+                <ControlTemplate TargetType="Button">
+                    <Border Background="{TemplateBinding Background}" CornerRadius="35" Padding="5">
+                        <Grid>
+                            <Ellipse Width="50" Height="50" Fill="Transparent" Stroke="White" StrokeThickness="2"/>
+                            <TextBlock Text="✕" FontSize="26" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,0,0,0"/>
+                        </Grid>
+                    </Border>
+                </ControlTemplate>
+            </Button.Template>
+            <Button.Style>
+                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                    <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+                    <Setter Property="RenderTransform">
+                        <Setter.Value>
+                            <ScaleTransform ScaleX="1" ScaleY="1"/>
+                        </Setter.Value>
+                    </Setter>
+                    <Style.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Background" Value="#FF1744"/>
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleX)"
+                                                         To="1.1" Duration="0:0:0.15"/>
+                                        <DoubleAnimation Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleY)"
+                                                         To="1.1" Duration="0:0:0.15"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleX)"
+                                                         To="1" Duration="0:0:0.15"/>
+                                        <DoubleAnimation Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleY)"
+                                                         To="1" Duration="0:0:0.15"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+            </Button.Style>
+        </Button>
+
     </Grid>
 </Window>

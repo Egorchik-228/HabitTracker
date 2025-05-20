@@ -1,5 +1,7 @@
 ﻿using HabitTracker.Models;
+using HabitTracker.Services;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
@@ -11,40 +13,45 @@ namespace HabitTracker.Views
 {
     public partial class HabitView : Window
     {
+        private readonly HabitService _habitService;
         public Habit Habit { get; private set; }
         public ObservableCollection<string> ReminderTimes { get; set; }
 
         public HabitView(Habit habit = null)
         {
             InitializeComponent();
-            Habit = habit ?? new Habit();
+            _habitService = new HabitService();
 
-            // Инициализируем список ReminderTimes, чтобы он всегда ссылался на данные Habit
-            ReminderTimes = habit?.ReminderTimes != null
-                ? new ObservableCollection<string>(habit.ReminderTimes)
-                : new ObservableCollection<string>();
+            Habit = habit ?? new Habit { StartDate = DateTime.Today };
+            ReminderTimes = new ObservableCollection<string>(Habit.ReminderTimes ?? new List<string>());
 
-            // Если список пуст (новая привычка или старая без напоминаний), то  добавляем одно время по умолчанию
-            if (ReminderTimes.Count == 0)
-            {
-                ReminderTimes.Add("08:00");
-            }
-
-            ReminderTimesList.ItemsSource = ReminderTimes; // Привязываем список времени напоминаний
-
-            if (habit != null)
-            {
-                HabitNameTextBox.Text = habit.Name;
-                StartDatePicker.SelectedDate = habit.StartDate;
-                DescriptionTextBox.Text = habit.Description;
-            }
-
-            StartDatePicker.DisplayDateStart = DateTime.Today; // Блокируем выбор прошедшей даты
+            ReminderTimesList.ItemsSource = ReminderTimes;
+            HabitNameTextBox.Text = Habit.Name;
+            StartDatePicker.SelectedDate = Habit.StartDate;
+            DescriptionTextBox.Text = Habit.Description;
+            StartDatePicker.DisplayDateStart = DateTime.Today;
         }
 
         private void AddReminder_Click(object sender, RoutedEventArgs e)
         {
-            ReminderTimes.Add("08:00"); // Добавляет новое время напоминания
+            if (string.IsNullOrWhiteSpace(NewReminderTimeTextBox.Text))
+            {
+                MessageBox.Show("Введите время напоминания!", "Ошибка",
+                              MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (TimeSpan.TryParseExact(NewReminderTimeTextBox.Text, "hh\\:mm",
+                CultureInfo.InvariantCulture, out _))
+            {
+                ReminderTimes.Add(NewReminderTimeTextBox.Text);
+                NewReminderTimeTextBox.Text = "";
+            }
+            else
+            {
+                MessageBox.Show("Введите время в формате ЧЧ:мм", "Некорректный формат",
+                              MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
 
         private void RemoveReminder_Click(object sender, RoutedEventArgs e)
@@ -55,21 +62,31 @@ namespace HabitTracker.Views
             }
         }
 
-
         private void SaveHabit_Click(object sender, RoutedEventArgs e)
         {
             if (string.IsNullOrWhiteSpace(HabitNameTextBox.Text) || StartDatePicker.SelectedDate == null)
             {
-                MessageBox.Show("Заполните все поля!", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("Заполните все обязательные поля!", "Ошибка",
+                                MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
+            }
+
+            foreach (var time in ReminderTimes)
+            {
+                if (!TimeSpan.TryParseExact(time, "hh\\:mm", CultureInfo.InvariantCulture, out _))
+                {
+                    MessageBox.Show($"Некорректный формат времени: {time}. Используйте формат ЧЧ:мм",
+                                  "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
             }
 
             DateTime selectedDate = StartDatePicker.SelectedDate.Value;
 
-            // Проверяем, что дата не в прошлом, только если это новая привычка
-            if (Habit.StartDate == default(DateTime) && selectedDate < DateTime.Today)
+            if (Habit.Id == 0 && selectedDate < DateTime.Today)
             {
-                MessageBox.Show("Нельзя выбрать прошедшую дату!", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("Нельзя выбрать прошедшую дату!", "Ошибка",
+                                MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -77,19 +94,26 @@ namespace HabitTracker.Views
             Habit.StartDate = selectedDate;
             Habit.Description = DescriptionTextBox.Text;
             Habit.ReminderTimes = ReminderTimes.ToList();
+            Habit.HasReminder = Habit.ReminderTimes.Any();
 
-            DialogResult = true;
-            Close();
+            try
+            {
+                _habitService.SaveHabit(Habit);
+                DialogResult = true;
+                Close();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка сохранения: {ex.Message}", "Ошибка",
+                              MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
-
 
         public class IndexToNumberConverter : IValueConverter
         {
             public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
             {
-                if (value is int index)
-                    return $"Время {index + 1}";
-                return "Время ?";
+                return value is int index ? $"Время {index + 1}" : "Время ?";
             }
 
             public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

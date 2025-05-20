@@ -1,8 +1,8 @@
-﻿using HabitTracker.Models;
-using Newtonsoft.Json;
+﻿using HabitTracker.Data;
+using HabitTracker.Models;
+using HabitTracker.Repositories;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Windows;
 
@@ -10,93 +10,104 @@ namespace HabitTracker.Services
 {
     public class HabitService
     {
-        private const string FilePath = "Data/habits.json";
+        private readonly HabitRepository _repository;
 
-        public List<Habit> LoadHabit()
+        public HabitService()
+        {
+            var context = new HabitDbContext();
+            _repository = new HabitRepository(context);
+        }
+
+        public List<Habit> LoadHabits()
         {
             try
             {
-                string directoryPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data");
-                string filePath = Path.Combine(directoryPath, "habits.json");
-
-                if (!Directory.Exists(directoryPath))
-                {
-                    Directory.CreateDirectory(directoryPath);
-                }
-
-                if (!File.Exists(filePath))
-                {
-                    File.WriteAllText(filePath, "[]");
-                }
-
-                string json = File.ReadAllText(filePath, System.Text.Encoding.UTF8);
-                Console.WriteLine("Содержимое JSON перед десериализацией:\n" + json);
-
-                var habits = JsonConvert.DeserializeObject<List<Habit>>(json) ?? new List<Habit>();
-
-                foreach (var habit in habits)
-                {
-                    if (habit.ReminderTimes == null)
-                    {
-                        habit.ReminderTimes = new List<string>();
-                    }
-                }
-
-                Console.WriteLine($"Загружено {habits.Count} привычек.");
+                var habits = _repository.GetAllHabits();
+                Console.WriteLine($"Загружено {habits.Count} привычек из базы данных.");
                 return habits;
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка загрузки данных: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Ошибка загрузки данных: {ex.Message}", "Ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
                 return new List<Habit>();
             }
         }
 
-
-        public void SaveHabits(List<Habit> habits)
+        public void SaveHabit(Habit habit)
         {
             try
             {
-                if (!Directory.Exists("Data"))
+                if (habit.Id == 0)
                 {
-                    Directory.CreateDirectory("Data");
+                    _repository.AddHabit(habit);
+                    Console.WriteLine($"Добавлена новая привычка: {habit.Name}");
+                }
+                else
+                {
+                    _repository.UpdateHabit(habit);
+                    Console.WriteLine($"Обновлена привычка: {habit.Name}");
                 }
 
-                Console.WriteLine($"Сохраняем {habits.Count} привычек...");
-
-                string json = JsonConvert.SerializeObject(habits, Formatting.Indented);
-                Console.WriteLine($"Сериализованный JSON:\n{json}"); // Проверка JSON перед записью
-
-                File.WriteAllText(FilePath, json);
-                Console.WriteLine("Данные успешно сохранены!");
-
-                // Проверяем, записались ли данные в файл
-                string checkJson = File.ReadAllText(FilePath);
-                Console.WriteLine($"Проверка после записи. Содержимое файла:\n{checkJson}");
-
-                MessageBox.Show("Данные сохранены!", "Сохранение", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show("Данные сохранены!", "Сохранение",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Ошибка при сохранении данных: {ex.Message}");
-                MessageBox.Show($"Ошибка при сохранении: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Ошибка при сохранении: {ex.Message}", "Ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-    
-    
 
-
-
-public void MarkHabitAsCompleted(Habit habit)
+        public bool MarkHabitAsCompleted(Habit habit)
         {
-            List<Habit> habits = LoadHabit();
-            Habit foundHabit = habits.FirstOrDefault(h => h.Name == habit.Name);
-
-            if (foundHabit != null && !foundHabit.CompletedDates.Contains(DateTime.Today))
+            try
             {
-                foundHabit.CompletedDates.Add(DateTime.Today);
-                SaveHabits(habits);
+                var dbHabit = _repository.GetHabitById(habit.Id);
+                if (dbHabit == null)
+                {
+                    return false;
+                }
+
+                // Проверка лимита выполнений на сегодня
+                int todayCompletions = dbHabit.CompletedDates.Count(d => d.Date == DateTime.Today);
+                if (todayCompletions >= dbHabit.DailyTarget)
+                {
+                    return false; // Лимит достигнут
+                }
+
+                // Добавляем новое выполнение
+                dbHabit.CompletedDates.Add(DateTime.Now);
+                _repository.UpdateHabit(dbHabit);
+
+                return true;
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка при отметке выполнения: {ex.Message}");
+                return false;
+            }
+        }
+
+        public void DeleteHabit(Habit habit)
+        {
+            try
+            {
+                _repository.DeleteHabit(habit.Id);
+                Console.WriteLine($"Удалена привычка: {habit.Name}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка при удалении: {ex.Message}");
+                MessageBox.Show($"Ошибка при удалении: {ex.Message}", "Ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        public Habit GetHabitById(int id)
+        {
+            return _repository.GetHabitById(id);
         }
     }
 }
